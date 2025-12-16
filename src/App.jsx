@@ -15,14 +15,45 @@ const App = () => {
     return unit === "C" ? tempC : (tempC * 9) / 5 + 32;
   };
 
+  async function fetchWeather(city) {
+    const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+
+    if (isLocal) {
+      // development: call your local backend
+      const res = await fetch(`http://localhost:8000/api/weather?city=${encodeURIComponent(city)}`);
+      if (!res.ok) throw new Error("Local backend error");
+      return await res.json();
+    } else {
+      // production: call OpenWeather directly (set API key in Vercel env)
+      const apiKey = process.env.REACT_APP_WEATHER_API_KEY || process.env.VITE_WEATHER_API_KEY;
+      if (!apiKey) throw new Error("WEATHER API key missing in environment");
+
+      const res = await fetch(
+        `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${apiKey}&units=metric`
+      );
+      if (!res.ok) {
+        const text = await res.text().catch(() => null);
+        throw new Error(`OpenWeather error: ${res.status} ${text || res.statusText}`);
+      }
+      const data = await res.json();
+
+      // normalize to the same shape your app expects from the backend
+      return {
+        city: data.name,
+        temp: data.main?.temp,
+        humidity: data.main?.humidity,
+        wind: data.wind?.speed,
+        condition: data.weather?.[0]?.description,
+        icon: data.weather?.[0]?.icon,
+      };
+    }
+  }
+
   const getWeather = async () => {
     if (!city.trim()) return;
 
     try {
-      const res = await fetch(
-        `http://localhost:8000/api/weather?city=${city}`
-      );
-      const data = await res.json();
+      const data = await fetchWeather(city);
 
       if (data.error) {
         setError("City not found");
