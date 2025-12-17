@@ -20,7 +20,7 @@ const App = () => {
 
     try {
       const res = await fetch(
-        `http://localhost:8000/api/weather?city=${city}`
+        `https://weather-frontend-five-sandy.vercel.app//api/weather?city=${city}`
       );
       const data = await res.json();
 
